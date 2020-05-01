@@ -75,8 +75,6 @@ checkDisjointSets u groups = do
   forM_ groups $ \group -> do
     roots <- forM group $ \element -> do
       root <- maybeToError "find failed" =<< DisjointSets.find u element
---      unless (root `elem` group) $ do
---        throwError "root was not an element of the group"
       pure root
 
     -- is the root the same in all cases?
