@@ -1,15 +1,15 @@
 cabal-version: 2.2
 name:
-  union-find
+  disjoint-sets
 version:
-  0.1.0.0
+  0.1
 synopsis:
   union find (FAST, GOOD, DOESN't SUCK)
 -- description:
 homepage:
-  https://github.com/chessai/union-find
+  https://github.com/chessai/disjoint-sets
 bug-reports:
-  https://github.com/chessai/union-find#issues
+  https://github.com/chessai/disjoint-sets#issues
 license:
   MIT
 license-file:
@@ -26,7 +26,7 @@ extra-source-files:
 
 library
   exposed-modules:
-    UnionFind
+    DisjointSets
   build-depends:
     , base
     , containers
@@ -41,7 +41,7 @@ library
   ghc-options:
     -O2
 
-test-suite union-find-test
+test-suite disjoint-sets-test
   default-language:
     Haskell2010
   type:
@@ -55,4 +55,4 @@ test-suite union-find-test
     , hedgehog
     , mtl
     , transformers
-    , union-find
+    , disjoint-sets
