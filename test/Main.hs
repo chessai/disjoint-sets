@@ -26,14 +26,15 @@ main :: IO Bool
 main = do
   checkSequential $$(discover)
 
-prop_AllGood :: Property
-prop_AllGood = property $ do
+prop_union_find :: Property
+prop_union_find = property $ do
   groups <- forAll $ genEquivalenceClass
   let e = runST $ runExceptT $ do
         u <- equivalenceRelationToDisjointSets groups
         checkDisjointSets u groups
   case e of
-    Right _ -> success
+    Right _ -> do
+      success
     Left err -> do
       footnote err
       failure
@@ -44,7 +45,7 @@ genEquivalenceClass = do
   let go :: Int -> [NonEmpty Int] -> StateT Int m [NonEmpty Int]
       go !currentGroup !acc = if currentGroup < sz
         then do
-          len <- Gen.int (Range.linear 1 7)
+          len <- Gen.int (Range.linear 4 20)
           group <- forM [0..len] $ \_ -> do
             i <- get
             modify (+ 1)
@@ -54,16 +55,9 @@ genEquivalenceClass = do
           pure acc
   flip evalStateT 0 (go 0 [])
 
-allEqual :: Eq a => NonEmpty a -> Bool
-allEqual (a :| as) = all (== a) as
-
-maybeToError :: MonadError e m => e -> Maybe a -> m a
-maybeToError e = maybe (throwError e) pure
-
-boolToError :: MonadError e m => e -> Bool -> m ()
-boolToError e b = if b then pure () else throwError e
-
-equivalenceRelationToDisjointSets :: Ord a => [NonEmpty a] -> ExceptT String (ST s) (DisjointSets s a)
+equivalenceRelationToDisjointSets :: Ord a
+  => [NonEmpty a]
+  -> ExceptT String (ST s) (DisjointSets s a)
 equivalenceRelationToDisjointSets groups = do
   u <- DisjointSets.empty
   forM_ groups $ \group -> do
@@ -73,13 +67,47 @@ equivalenceRelationToDisjointSets groups = do
     boolToError "unions failed!" =<< DisjointSets.unions u (NonEmpty.toList group)
   pure u
 
-checkDisjointSets :: Ord a => DisjointSets s a -> [NonEmpty a] -> ExceptT String (ST s) ()
+checkDisjointSets :: Ord a
+  => DisjointSets s a
+  -> [NonEmpty a]
+  -> ExceptT String (ST s) ()
 checkDisjointSets u groups = do
   forM_ groups $ \group -> do
     roots <- forM group $ \element -> do
       root <- maybeToError "find failed" =<< DisjointSets.find u element
-      unless (root `elem` group) $ do
-        throwError "root was not an element of the group"
+--      unless (root `elem` group) $ do
+--        throwError "root was not an element of the group"
       pure root
+
+    -- is the root the same in all cases?
     unless (allEqual roots) $ do
       throwError "roots not all equal"
+
+    -- is the root an element of the group?
+    --
+    -- note that this should should come after the allEqual check
+    -- due to the use of 'NonEmpty.head'.
+    unless (NonEmpty.head roots `within` group) $ do
+      throwError "the minimal element returned by `find` is not an element of the group."
+
+    -- is the root the minimal element?
+    --
+    -- note that this should should come after the allEqual check
+    -- due to the use of 'NonEmpty.head'.
+    unless (NonEmpty.head roots `isMinimalElementOf` group) $ do
+      throwError "root is not the minimal element"
+
+allEqual :: Eq a => NonEmpty a -> Bool
+allEqual (a :| as) = all (== a) as
+
+isMinimalElementOf :: Ord a => a -> NonEmpty a -> Bool
+a `isMinimalElementOf` as = all (>= a) as
+
+within :: Eq a => a -> NonEmpty a -> Bool
+within a as = any (== a) as
+
+maybeToError :: MonadError e m => e -> Maybe a -> m a
+maybeToError e = maybe (throwError e) pure
+
+boolToError :: MonadError e m => e -> Bool -> m ()
+boolToError e b = if b then pure () else throwError e
