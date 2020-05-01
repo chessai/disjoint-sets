@@ -19,8 +19,8 @@ import Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 
-import UnionFind (UnionFind)
-import qualified UnionFind
+import DisjointSets (DisjointSets)
+import qualified DisjointSets
 
 main :: IO Bool
 main = do
@@ -30,8 +30,8 @@ prop_AllGood :: Property
 prop_AllGood = property $ do
   groups <- forAll $ genEquivalenceClass
   let e = runST $ runExceptT $ do
-        u <- equivalenceRelationToUnionFind groups
-        checkUnionFind u groups
+        u <- equivalenceRelationToDisjointSets groups
+        checkDisjointSets u groups
   case e of
     Right _ -> success
     Left err -> do
@@ -63,21 +63,21 @@ maybeToError e = maybe (throwError e) pure
 boolToError :: MonadError e m => e -> Bool -> m ()
 boolToError e b = if b then pure () else throwError e
 
-equivalenceRelationToUnionFind :: Ord a => [NonEmpty a] -> ExceptT String (ST s) (UnionFind s a)
-equivalenceRelationToUnionFind groups = do
-  u <- UnionFind.empty
+equivalenceRelationToDisjointSets :: Ord a => [NonEmpty a] -> ExceptT String (ST s) (DisjointSets s a)
+equivalenceRelationToDisjointSets groups = do
+  u <- DisjointSets.empty
   forM_ groups $ \group -> do
     forM_ group $ \element -> do
-      UnionFind.insert u element
+      DisjointSets.insert u element
   forM_ groups $ \group -> do
-    boolToError "unions failed!" =<< UnionFind.unions u (NonEmpty.toList group)
+    boolToError "unions failed!" =<< DisjointSets.unions u (NonEmpty.toList group)
   pure u
 
-checkUnionFind :: Ord a => UnionFind s a -> [NonEmpty a] -> ExceptT String (ST s) ()
-checkUnionFind u groups = do
+checkDisjointSets :: Ord a => DisjointSets s a -> [NonEmpty a] -> ExceptT String (ST s) ()
+checkDisjointSets u groups = do
   forM_ groups $ \group -> do
     roots <- forM group $ \element -> do
-      root <- maybeToError "find failed" =<< UnionFind.find u element
+      root <- maybeToError "find failed" =<< DisjointSets.find u element
       unless (root `elem` group) $ do
         throwError "root was not an element of the group"
       pure root
