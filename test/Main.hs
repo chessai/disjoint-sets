@@ -28,7 +28,7 @@ main = do
 
 prop_union_find :: Property
 prop_union_find = property $ do
-  groups <- forAll $ genEquivalenceClass
+  groups <- forAll $ genEquivalenceClasses
   let e = runST $ runExceptT $ do
         u <- equivalenceRelationToDisjointSets groups
         checkDisjointSets u groups
@@ -39,8 +39,8 @@ prop_union_find = property $ do
       footnote err
       failure
 
-genEquivalenceClass :: forall m. MonadGen m => m [NonEmpty Int]
-genEquivalenceClass = do
+genEquivalenceClasses :: forall m. MonadGen m => m [NonEmpty Int]
+genEquivalenceClasses = do
   sz <- Gen.int (Range.linear 3 10)
   let go :: Int -> [NonEmpty Int] -> StateT Int m [NonEmpty Int]
       go !currentGroup !acc = if currentGroup < sz
